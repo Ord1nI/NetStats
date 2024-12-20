@@ -1,0 +1,33 @@
+Value Uptime (\d*\w*\d*\w*\d*\w*\d+s)
+Value Version (\d+\.\d+ \S*)
+Value BuildTime (\d+-\d+-\d+ \d+:\d+:\d+)
+Value FactorySoftware (\d+\.\d+ \S*)
+Value FreeMemory (\d+\.?\d*)
+Value TotalMemory (\d+\.?\d*)
+Value Cpu (\S*)
+Value CpuCount (\d+)
+Value CpuFrequency (\d+)
+Value CpuLoad (\d+)
+Value FreeHddSpace (\d+\.?\d*)
+Value TotalHddSpace (\d+\.?\d*)
+
+
+Start
+                   uptime: {Uptime}
+                  version: {Version}
+               build-time: {BuildTime}
+         factory-software: {FactorySoftware}
+              free-memory: {FreeMemory}MiB
+             total-memory: {TotalMemory}MiB
+                      cpu: {Cpu}
+                cpu-count: {CpuCount}
+			cpu-frequency: {CpuFrequency}MHz
+				 cpu-load: {CpuLoad}%
+           free-hdd-space: 71.2MiB
+          total-hdd-space: 89.2MiB
+  write-sect-since-reboot: 4256
+         write-sect-total: 4256
+        architecture-name: x86_64
+               board-name: CHR QEMU Standard PC (i440FX + PIIX, 1996)
+
+EOF
