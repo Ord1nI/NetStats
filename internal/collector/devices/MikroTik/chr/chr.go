@@ -1,6 +1,7 @@
 package chr
 
 import (
+	"context"
 	"log"
 	"regexp"
 	"strconv"
@@ -10,7 +11,6 @@ import (
 	"github.com/Ord1nI/netStats/internal/collector/devices"
 	"github.com/Ord1nI/netStats/internal/logger"
 	"github.com/Ord1nI/netStats/internal/storage"
-	"github.com/scrapli/scrapligo/driver/generic"
 	"github.com/scrapli/scrapligo/driver/options"
 	"github.com/sirikothe/gotextfsm"
 )
@@ -48,10 +48,6 @@ func New(logger logger.Logger, host string, port int, username string, password 
 		options.WithAuthNoStrictKey(),
 		options.WithAuthUsername(username),
 		options.WithAuthPassword(password),
-		options.WithOnClose(func(d *generic.Driver)error{
-			_,err := d.SendCommand("quit")
-			return err
-		}),
 		options.WithPort(port),
 	)
 
@@ -65,7 +61,7 @@ func New(logger logger.Logger, host string, port int, username string, password 
 }
 
 
-func (c *chr) parseVersion(parser *gotextfsm.ParserOutput, stats *storage.Stats) error {
+func (c *chr) parseVersion(parser *gotextfsm.ParserOutput, stats *storage.Stat) error {
 	uptime, err := time.ParseDuration(parser.Dict[0]["Uptime"].(string))
 	if err != nil {
 		c.Logger.Errorln("Error when parsing time")
@@ -98,9 +94,9 @@ func (c *chr) parseVersion(parser *gotextfsm.ParserOutput, stats *storage.Stats)
 	return nil
 }
 
-func (c *chr) parseInterface(parser *gotextfsm.ParserOutput, stats *storage.Stats) error {
-	if len(parser.Dict) != len(stats.InterfacesInfo) {
-		stats.InterfacesInfo = make([]storage.L2Interface, len(parser.Dict))
+func (c *chr) parseInterface(parser *gotextfsm.ParserOutput, stat *storage.Stat) error {
+	if len(parser.Dict) != len(stat.InterfacesInfo) {
+		stat.InterfacesInfo = make([]storage.L2Interface, len(parser.Dict))
 	}
 
 	for i, v := range parser.Dict {
@@ -110,21 +106,21 @@ func (c *chr) parseInterface(parser *gotextfsm.ParserOutput, stats *storage.Stat
 		}
 
 		if (v["Comment"] != nil) {
-			stats.InterfacesInfo[i].Description = v["Comment"].(string)
+			stat.InterfacesInfo[i].Description = v["Comment"].(string)
 		}
 
-		stats.InterfacesInfo[i].Mac = v["MAC"].(string)
-		stats.InterfacesInfo[i].Name = v["Name"].(string)
-		stats.InterfacesInfo[i].Running = v["Running"].(string)
-		stats.InterfacesInfo[i].Disabled = v["Disabled"].(string)
-		stats.InterfacesInfo[i].NameOriginal = v["NameOriginal"].(string)
-		stats.InterfacesInfo[i].Ifname = v["Type"].(string)
-		stats.InterfacesInfo[i].Mtu = int32(mtu)
+		stat.InterfacesInfo[i].MAC = v["MAC"].(string)
+		stat.InterfacesInfo[i].Name = v["Name"].(string)
+		stat.InterfacesInfo[i].Running = v["Running"].(string)
+		stat.InterfacesInfo[i].Disabled = v["Disabled"].(string)
+		stat.InterfacesInfo[i].NameOriginal = v["NameOriginal"].(string)
+		stat.InterfacesInfo[i].Ifname = v["Type"].(string)
+		stat.InterfacesInfo[i].MTU = int32(mtu)
 	}
 	return nil
 }
 
-func (c *chr) parseCounter(parser *gotextfsm.ParserOutput, stats *storage.Stats) error {
+func (c *chr) parseCounter(parser *gotextfsm.ParserOutput, stats *storage.Stat) error {
 	if len(parser.Dict) != len(stats.InterfacesInfo) {
 		stats.InterfacesInfo = make([]storage.L2Interface, len(parser.Dict))
 	}
@@ -178,32 +174,44 @@ func (c *chr) parseCounter(parser *gotextfsm.ParserOutput, stats *storage.Stats)
 }
 
 
-func (c *chr) CollectMetric() ( error) {
-	c.Logger.Infoln("Start Metric collecting for MikroTik CHR host: ", c.Driver.Transport.Args.Host)
-	c.Driver.Open()
-	defer c.Driver.Close()
+func (c *chr) CollectMetric() error {
+	c.Logger.Infoln("Start Metric collecting for MikroTik CHR host: ", c.Host)
+	err := c.Open()
 
-	stats := &storage.Stats{}
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer c.Close()
+
+	stats := &storage.Stat{}
 	parser := gotextfsm.ParserOutput{}
 
-	c.Driver.SendCommand("123")
+	tc, stop := context.WithTimeout(context.Background(), time.Second*60)
+	defer stop()
+
+	_, err = c.Driver.Channel.ReadUntilPrompt(tc)
+
+	if err != nil {
+		log.Fatal("196")
+	}
 
 	for _, v := range c.Commands {
 		out, err := c.BackOff(v.Command)
 
 		if err != nil {
-			log.Fatal("FIXME")
+			log.Fatal("203")
 		}
 
 
 		err = parser.ParseTextString(out.Result, *v.Fsm, true)
 		if err != nil {
-			log.Fatal("FIXME")
+			log.Fatal("209")
 		}
 
 		err = v.ParseFunc(&parser,stats)
 		if err != nil {
-			log.Fatal("FIXME")
+			log.Fatal("214")
 		}
 
 		parser.Dict = nil

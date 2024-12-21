@@ -1,8 +1,8 @@
 package main
 
 import (
-	"context"
 	"fmt"
+	"log"
 	"regexp"
 	"time"
 
@@ -31,28 +31,40 @@ func main() {
 		options.WithPasswordPattern(regexp.MustCompile(`.*Password:\s?$`)),
 		options.WithUsernamePattern(regexp.MustCompile(`.*Username:\s?$`)),
 		options.WithAuthNoStrictKey(),
+		options.WithTimeoutOps(20*time.Second),
 		options.WithAuthUsername("admin"),
 		// options.WithOnOpen(ciscoOnOpen),
 		options.WithAuthPassword("123"),
 		options.WithPort(22),
 	)
 
+	if err != nil {
+		log.Fatal("FUCK")
+	}
+
 	d.Open()
-	defer d.Close()
 
-	d.Channel.ReadUntilPrompt(context.TODO())
-	out, err := d.SendCommand("system/resource/print without-paging")
+	res, err := d.GetPrompt()
 
 	if err != nil {
-		fmt.Println("FUCK")
+		log.Fatal(err)
 	}
 
-	fmt.Println(out.Result)
-	out, err = d.SendCommand("system/resource/print without-paging")
+	fmt.Println(res)
 
-	if err != nil {
-		fmt.Println("FUCK")
+
+	d.Close()
+
+	err = d.Open()
+
+	for {
+		b, err := d.Channel.Read()
+		if err != nil {
+			log.Fatal(err)
+		}
+		if b == nil {
+			fmt.Println("nil")
+		}
+		fmt.Println(string(b))
 	}
-
-	fmt.Println(out.Result)
 }

@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "proto/proto";
+
+message DevInfo {
+ string version = 1;
+ string hostname = 2;
+ int64 uptime = 3;
+ string processor = 4;
+ string devType = 5;
+ int64 memoryTotalBytes = 6;
+ int64 memoryUsedBytes = 7;
+}
+
+
+message Counter {
+ int64 inDrops = 1;
+ int64 outDrops = 2;
+ int64 inPkts = 3;
+ int64 inBytes = 4;
+ int64 inErr = 5;
+ int64 outPkts = 6;
+ int64 outBytes = 7;
+ int64 outErr = 8;
+}
+
+
+message L2Interface {
+ string name = 1;
+ string nameOriginal = 2;
+ string ifName = 3;
+ string disabled = 4;
+ string running = 5;
+ string mac = 6;
+ int32 mtu = 7;
+ string description = 8;
+ Counter counter = 9;
+}
+message Stats {
+ repeated Stat stat = 1;
+}
+
+message Stat {
+ DevInfo devInfo = 1;
+ repeated L2Interface l2Interface = 2;
+}
+
+message AddStatsRes {
+ string error = 1;
+}
+
+message GetStatsRes {
+ Stats stats = 1;
+}
+
+message GetStatsReq {
+ int64 time = 1;
+}
+
+service Users {
+ rpc AddStats(Stats) returns (AddStatsRes);
+ rpc GetStats(GetStatsReq) returns (GetStatsRes);
+}

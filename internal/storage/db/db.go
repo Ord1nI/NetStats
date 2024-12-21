@@ -24,7 +24,7 @@ func NewDb() (*DB, error) {
 	return &DB{db}, err
 }
 
-func (d *DB) Add(stats []storage.Stats, name string) error {
+func (d *DB) Add(stats []storage.Stat, name string) error {
 	_, err := d.DB.Exec("INSERT INTO snapshots (name) VALUES ('Snapshot 1');")
 	if err != nil {
 		return err

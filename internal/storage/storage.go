@@ -1,6 +1,6 @@
 package storage
 
-type Stats struct {
+type Stat struct {
     DevInfo DeviceInfo
     InterfacesInfo []L2Interface
 }
@@ -33,8 +33,8 @@ type L2Interface struct{
     Ifname string `json:"Ifname"`
     Disabled string `json:"Disabled"`
     Running string `json:"Running"`
-    Mac string `json:"Mac"`
-    Mtu int32 `json:"Mtu"`
-    Counters Counters `json:"Counters"`
+    MAC string `json:"Mac"`
+    MTU int32 `json:"Mtu"`
     Description string `json:"Description"`
+    Counters Counters `json:"Counters"`
 }

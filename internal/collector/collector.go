@@ -7,61 +7,50 @@ import (
 	"github.com/Ord1nI/netStats/internal/collector/devices"
 	"github.com/Ord1nI/netStats/internal/logger"
 	"github.com/Ord1nI/netStats/internal/storage"
-	"golang.org/x/sync/errgroup"
 )
 
 type Collector struct {
 	logger logger.Logger
 	Schedule time.Duration
+	RateLimit int
 	Devices []devices.Device
 	stop chan struct{}
-	overAllStats chan []storage.Stats
+	overAllStats chan []storage.Stat
 }
 
-func NewCollector(logger logger.Logger, schedule time.Duration, devices ...devices.Device) *Collector {
-	collector := &Collector{logger:logger,Schedule:schedule, Devices:devices}
+func NewCollector(logger logger.Logger, schedule time.Duration, RateLimit int, devices ...devices.Device) *Collector {
+	collector := &Collector{logger:logger,Schedule:schedule, Devices:devices, RateLimit:RateLimit}
 	return collector
 }
 
-func (c *Collector) Ping() error {
-	var g errgroup.Group
-
-	for _, i := range c.Devices {
-		g.Go(func() error {
-			return i.Ping()
-		})
-	}
-
-	if err := g.Wait(); err != nil {
-		return err
-	}
-
-	return nil
+func (c *Collector) Add(d devices.Device) {
+	c.Devices = append(c.Devices, d)
 }
 
+
 func (c *Collector) Start() error {
-	// if err := c.Ping(); err != nil {
-	// 	return err
-	// }
 
 	c.stop = make(chan struct{})
 
-	c.overAllStats = make(chan []storage.Stats)
+	c.overAllStats = make(chan []storage.Stat)
 
 	ticker := time.NewTicker(c.Schedule)
+
+	overAllStats := make([]storage.Stat,len(c.Devices))
 
 	go func() {
 		defer close(c.overAllStats)
 		for {
+
 			select {
+
 			case <-c.stop:
 				c.logger.Infoln("Stop Collector")
 				return
 			case <-ticker.C:
 
-				c.startWorkers(c.devPool())
+				c.startWorkers(c.devPool(c.stop))
 
-				overAllStats := make([]storage.Stats,len(c.Devices))
 
 				for v, i := range c.Devices {
 					overAllStats[v] = *i.GetStats()
@@ -76,20 +65,33 @@ func (c *Collector) Start() error {
 	return nil
 }
 
-func (c *Collector) GetStats() []storage.Stats{
-	return <-c.overAllStats
+func (c *Collector) GetStatsCh() <-chan []storage.Stat{
+	return c.overAllStats
 }
 
 func (c *Collector) Stop() {
 	close(c.stop)
 }
 
-func (c *Collector) devPool() <-chan devices.Device{
+func (c *Collector) devPool(stop <-chan struct{}) <-chan devices.Device{
 	devPool := make(chan devices.Device)
+
 	go func() {
+
 		defer close(devPool)
+
 			for _, i := range c.Devices {
-				devPool <- i
+
+				select {
+				case <-stop:
+
+					c.logger.Infoln("devPool stop")
+					return
+
+				default:
+
+					devPool <- i
+				}
 			}
 	}()
 	return devPool
@@ -99,7 +101,7 @@ func (c *Collector) startWorkers(devicePoll <-chan devices.Device) {
 
 	var wg sync.WaitGroup
 
-	for i := range 2 {
+	for i := range c.RateLimit {
 		wg.Add(1)
 		c.logger.Infoln("start", i, "worker")
 

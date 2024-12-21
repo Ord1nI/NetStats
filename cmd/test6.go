@@ -1,11 +1,29 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
-	"strings"
+
+	"github.com/Ord1nI/netStats/internal/client"
 )
 
 func main() {
-	r := strings.NewReplacer(" ", "")
-	fmt.Println(r.Replace("10 10 10"))
+	c := []client.DevConnectionParams {
+		client.DevConnectionParams{
+			DeviceName:"MicroTik",
+			Host: "192.168.1.2",
+			Port: 22,
+			Username: "admin",
+			Password: "123",
+		},client.DevConnectionParams{
+			DeviceName:"MicroTik",
+			Host: "192.168.1.2",
+			Port: 22,
+			Username: "admin",
+			Password: "123",
+		},
+	}
+
+	b, _ := json.Marshal(c)
+	fmt.Println(string(b))
 }
