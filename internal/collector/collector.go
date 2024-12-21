@@ -4,26 +4,30 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Ord1nI/netStats/internal/collector/devices"
 	"github.com/Ord1nI/netStats/internal/logger"
-	"github.com/Ord1nI/netStats/internal/storage"
+	"github.com/Ord1nI/netStats/internal/storage/stat"
 )
+
+type Device interface{
+	CollectMetric() (error)
+	GetStats() (*stat.Stat)
+}
 
 type Collector struct {
 	logger logger.Logger
 	Schedule time.Duration
 	RateLimit int
-	Devices []devices.Device
+	Devices []Device
 	stop chan struct{}
-	overAllStats chan []storage.Stat
+	overAllStats chan []stat.Stat
 }
 
-func NewCollector(logger logger.Logger, schedule time.Duration, RateLimit int, devices ...devices.Device) *Collector {
+func NewCollector(logger logger.Logger, schedule time.Duration, RateLimit int, devices ...Device) *Collector {
 	collector := &Collector{logger:logger,Schedule:schedule, Devices:devices, RateLimit:RateLimit}
 	return collector
 }
 
-func (c *Collector) Add(d devices.Device) {
+func (c *Collector) Add(d Device) {
 	c.Devices = append(c.Devices, d)
 }
 
@@ -32,11 +36,11 @@ func (c *Collector) Start() error {
 
 	c.stop = make(chan struct{})
 
-	c.overAllStats = make(chan []storage.Stat)
+	c.overAllStats = make(chan []stat.Stat)
 
 	ticker := time.NewTicker(c.Schedule)
 
-	overAllStats := make([]storage.Stat,len(c.Devices))
+	overAllStats := make([]stat.Stat,len(c.Devices))
 
 	go func() {
 		defer close(c.overAllStats)
@@ -65,7 +69,7 @@ func (c *Collector) Start() error {
 	return nil
 }
 
-func (c *Collector) GetStatsCh() <-chan []storage.Stat{
+func (c *Collector) GetStatsCh() <-chan []stat.Stat{
 	return c.overAllStats
 }
 
@@ -73,8 +77,8 @@ func (c *Collector) Stop() {
 	close(c.stop)
 }
 
-func (c *Collector) devPool(stop <-chan struct{}) <-chan devices.Device{
-	devPool := make(chan devices.Device)
+func (c *Collector) devPool(stop <-chan struct{}) <-chan Device{
+	devPool := make(chan Device)
 
 	go func() {
 
@@ -97,7 +101,7 @@ func (c *Collector) devPool(stop <-chan struct{}) <-chan devices.Device{
 	return devPool
 }
 
-func (c *Collector) startWorkers(devicePoll <-chan devices.Device) {
+func (c *Collector) startWorkers(devicePoll <-chan Device) {
 
 	var wg sync.WaitGroup
 

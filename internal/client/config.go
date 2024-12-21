@@ -51,15 +51,13 @@ func getDevicesFromFile(fileName string) ([]DevConnectionParams, error) {
 func (c *Client) getConf() error {
 
 	var (
-		fAddress = flag.String("a", "127.0.0.1", "enter IP format ip:port")
+		fAddress = flag.String("a", "127.0.0.1:8080", "enter IP format ip:port")
 		fRateLimit = flag.Int("l", 3, "enter Rate limit")
 		fSchedule = flag.Int64("s", 1, "enter device polling period in minutes")
 		devParamsFilePath = flag.String("d", "./devices.json", "enter path to file with devices")
 	)
 
-	c.logger.Infoln("1")
 	flag.Parse()
-	c.logger.Infoln("2")
 
 
 	c.config = &config{
@@ -68,7 +66,6 @@ func (c *Client) getConf() error {
 		RateLimit: *fRateLimit,
 	}
 
-	c.logger.Infoln("3")
 
 	devs, err := getDevicesFromFile(*devParamsFilePath)
 

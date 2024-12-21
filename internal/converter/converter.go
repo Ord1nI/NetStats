@@ -2,12 +2,14 @@ package converter
 
 import (
 	pb "github.com/Ord1nI/netStats/internal/proto"
-	"github.com/Ord1nI/netStats/internal/storage"
+	"github.com/Ord1nI/netStats/internal/storage/stat"
 )
 
-func ToGrpsStats(stats *storage.Stat) *pb.Stat {
+func ToGrpsStats(stats *stat.Stat) *pb.Stat {
 	gStat := &pb.Stat{}
-	gStat.L2Interface = make([]*pb.L2Interface, 0, len(stats.InterfacesInfo))
+	gStat.L2Interface = make([]*pb.L2Interface, len(stats.InterfacesInfo))
+
+	gStat.DevInfo = &pb.DevInfo{}
 
 	gStat.DevInfo.Version = stats.DevInfo.Version
 	gStat.DevInfo.Hostname = stats.DevInfo.Hostname
@@ -21,7 +23,6 @@ func ToGrpsStats(stats *storage.Stat) *pb.Stat {
 	for i, v := range stats.InterfacesInfo {
 
 		gStat.L2Interface[i] = &pb.L2Interface{}
-
 
 		gStat.L2Interface[i].Name = v.Name
 		gStat.L2Interface[i].NameOriginal = v.NameOriginal
@@ -48,9 +49,9 @@ func ToGrpsStats(stats *storage.Stat) *pb.Stat {
 	return gStat
 }
 
-func FromGrpsStats(stats *pb.Stat) *storage.Stat {
-	gStat := &storage.Stat{}
-	gStat.InterfacesInfo = make([]storage.L2Interface, 0, len(stats.L2Interface))
+func FromGrpsStats(stats *pb.Stat) *stat.Stat {
+	gStat := &stat.Stat{}
+	gStat.InterfacesInfo = make([]stat.L2Interface, len(stats.L2Interface))
 
 	gStat.DevInfo.Version = stats.DevInfo.Version
 	gStat.DevInfo.Hostname = stats.DevInfo.Hostname

@@ -1,4 +1,4 @@
-package storage
+package stat
 
 type Stat struct {
     DevInfo DeviceInfo

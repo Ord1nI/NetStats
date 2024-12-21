@@ -3,7 +3,7 @@ package devices
 import (
 	"time"
 
-	"github.com/Ord1nI/netStats/internal/storage"
+	"github.com/Ord1nI/netStats/internal/storage/stat"
 	"github.com/Ord1nI/netStats/internal/logger"
 
 	"github.com/scrapli/scrapligo/driver/generic"
@@ -12,21 +12,17 @@ import (
 	"github.com/sirikothe/gotextfsm"
 )
 
-type Device interface{
-	CollectMetric() (error)
-	GetStats() (*storage.Stat)
-}
 
 type command struct {
 	Command string
 	Fsm *gotextfsm.TextFSM
-	ParseFunc func(parser *gotextfsm.ParserOutput, stats *storage.Stat) error
+	ParseFunc func(parser *gotextfsm.ParserOutput, stats *stat.Stat) error
 }
 
 type Command struct {
 	Command string
 	Fsm string
-	ParseFunc func(parser *gotextfsm.ParserOutput, stats *storage.Stat) error
+	ParseFunc func(parser *gotextfsm.ParserOutput, stats *stat.Stat) error
 }
 
 type Dev struct {
@@ -37,7 +33,7 @@ type Dev struct {
 	Host string
 	Options []util.Option
 
-	Stats *storage.Stat
+	Stats *stat.Stat
 	Commands []command
 }
 
@@ -91,7 +87,7 @@ func (d *Dev) Close() error {
 	return d.Driver.Close()
 }
 
-func (d *Dev) GetStats() (*storage.Stat) {
+func (d *Dev) GetStats() (*stat.Stat) {
 	return d.Stats
 }
 

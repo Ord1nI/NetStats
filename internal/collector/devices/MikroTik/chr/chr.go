@@ -10,7 +10,7 @@ import (
 
 	"github.com/Ord1nI/netStats/internal/collector/devices"
 	"github.com/Ord1nI/netStats/internal/logger"
-	"github.com/Ord1nI/netStats/internal/storage"
+	"github.com/Ord1nI/netStats/internal/storage/stat"
 	"github.com/scrapli/scrapligo/driver/options"
 	"github.com/sirikothe/gotextfsm"
 )
@@ -23,7 +23,7 @@ const versionCmd = "system/resource/print without-paging"
 const interfaceAboutCmd = "interface/print detail proplist=name,default-name,type,mtu,mac,disabled,running without-paging"
 const counterCmd = "interface/print stats-detail proplist=rx-byte,tx-byte,rx-packet,tx-packet,rx-drop,tx-drop,rx-error,tx-error without-paging"
 
-func New(logger logger.Logger, host string, port int, username string, password string) (devices.Device, error) {
+func New(logger logger.Logger, host string, port int, username string, password string) (*chr, error) {
 	logger.Infoln("Creating Mikrotik CHR device")
 
 	chr := &chr{}
@@ -61,7 +61,7 @@ func New(logger logger.Logger, host string, port int, username string, password 
 }
 
 
-func (c *chr) parseVersion(parser *gotextfsm.ParserOutput, stats *storage.Stat) error {
+func (c *chr) parseVersion(parser *gotextfsm.ParserOutput, stats *stat.Stat) error {
 	uptime, err := time.ParseDuration(parser.Dict[0]["Uptime"].(string))
 	if err != nil {
 		c.Logger.Errorln("Error when parsing time")
@@ -94,9 +94,9 @@ func (c *chr) parseVersion(parser *gotextfsm.ParserOutput, stats *storage.Stat) 
 	return nil
 }
 
-func (c *chr) parseInterface(parser *gotextfsm.ParserOutput, stat *storage.Stat) error {
-	if len(parser.Dict) != len(stat.InterfacesInfo) {
-		stat.InterfacesInfo = make([]storage.L2Interface, len(parser.Dict))
+func (c *chr) parseInterface(parser *gotextfsm.ParserOutput, stata *stat.Stat) error {
+	if len(parser.Dict) != len(stata.InterfacesInfo) {
+		stata.InterfacesInfo = make([]stat.L2Interface, len(parser.Dict))
 	}
 
 	for i, v := range parser.Dict {
@@ -106,23 +106,23 @@ func (c *chr) parseInterface(parser *gotextfsm.ParserOutput, stat *storage.Stat)
 		}
 
 		if (v["Comment"] != nil) {
-			stat.InterfacesInfo[i].Description = v["Comment"].(string)
+			stata.InterfacesInfo[i].Description = v["Comment"].(string)
 		}
 
-		stat.InterfacesInfo[i].MAC = v["MAC"].(string)
-		stat.InterfacesInfo[i].Name = v["Name"].(string)
-		stat.InterfacesInfo[i].Running = v["Running"].(string)
-		stat.InterfacesInfo[i].Disabled = v["Disabled"].(string)
-		stat.InterfacesInfo[i].NameOriginal = v["NameOriginal"].(string)
-		stat.InterfacesInfo[i].Ifname = v["Type"].(string)
-		stat.InterfacesInfo[i].MTU = int32(mtu)
+		stata.InterfacesInfo[i].MAC = v["MAC"].(string)
+		stata.InterfacesInfo[i].Name = v["Name"].(string)
+		stata.InterfacesInfo[i].Running = v["Running"].(string)
+		stata.InterfacesInfo[i].Disabled = v["Disabled"].(string)
+		stata.InterfacesInfo[i].NameOriginal = v["NameOriginal"].(string)
+		stata.InterfacesInfo[i].Ifname = v["Type"].(string)
+		stata.InterfacesInfo[i].MTU = int32(mtu)
 	}
 	return nil
 }
 
-func (c *chr) parseCounter(parser *gotextfsm.ParserOutput, stats *storage.Stat) error {
+func (c *chr) parseCounter(parser *gotextfsm.ParserOutput, stats *stat.Stat) error {
 	if len(parser.Dict) != len(stats.InterfacesInfo) {
-		stats.InterfacesInfo = make([]storage.L2Interface, len(parser.Dict))
+		stats.InterfacesInfo = make([]stat.L2Interface, len(parser.Dict))
 	}
 
 	r := strings.NewReplacer(" ", "")
@@ -184,7 +184,7 @@ func (c *chr) CollectMetric() error {
 
 	defer c.Close()
 
-	stats := &storage.Stat{}
+	stats := &stat.Stat{}
 	parser := gotextfsm.ParserOutput{}
 
 	tc, stop := context.WithTimeout(context.Background(), time.Second*60)

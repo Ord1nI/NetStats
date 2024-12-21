@@ -3,17 +3,23 @@ package client
 import (
 	"time"
 
-	"github.com/Ord1nI/netStats/internal/api"
+	"github.com/Ord1nI/netStats/internal/api/clientapi"
 	"github.com/Ord1nI/netStats/internal/collector"
 	"github.com/Ord1nI/netStats/internal/collector/devices/MikroTik/chr"
 	"github.com/Ord1nI/netStats/internal/logger"
+	"github.com/Ord1nI/netStats/internal/storage/stat"
 )
+type API interface {
+	AddStats(stats []stat.Stat) error
+	GetStats(time time.Time) ([]stat.Stat, error)
+}
 
 type Client struct {
-	api api.API
+	api API
 	config *config
 	logger logger.Logger
 	collector *collector.Collector
+
 
 	stopCh chan struct{}
 }
@@ -47,7 +53,7 @@ func NewClient(l logger.Logger) (*Client, error) {
 
 	client.collector = collector
 
-	api, err := api.NewApi(client.config.Address)
+	api, err := clientapi.New(client.config.Address)
 
 	if err != nil {
 		return nil, err
@@ -83,7 +89,10 @@ func (c *Client) Start() error {
 				return
 
 			case stats := <- statsCh:
-				c.api.AddStats(stats)
+				err := c.api.AddStats(stats)
+				if err != nil {
+					c.logger.Errorln("Error sendig stats to server ", err)
+				}
 			}
 		}
 	}()

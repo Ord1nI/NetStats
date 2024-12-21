@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/Ord1nI/netStats/internal/storage"
+	"github.com/Ord1nI/netStats/internal/storage/stat"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -14,17 +14,18 @@ type DB struct {
 	DB *sql.DB
 }
 
-func NewDb() (*DB, error) {
-	db, err := sql.Open("sqlite3","stats.db")
+func NewDb(dsn string) (*DB, error) {
+	db, err := sql.Open("sqlite3", dsn)
 	db.SetMaxOpenConns(1)
 
 	if err != nil {
 		return nil, err
 	}
-	return &DB{db}, err
+
+	return &DB{db}, nil
 }
 
-func (d *DB) Add(stats []storage.Stat, name string) error {
+func (d *DB) Add(stats []stat.Stat, name string) error {
 	_, err := d.DB.Exec("INSERT INTO snapshots (name) VALUES ('Snapshot 1');")
 	if err != nil {
 		return err
