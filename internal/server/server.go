@@ -1,22 +1,25 @@
 package server
 
 import (
+	"time"
+
 	"github.com/Ord1nI/netStats/internal/logger"
 	"github.com/Ord1nI/netStats/internal/storage/db"
 	"github.com/Ord1nI/netStats/internal/storage/stat"
 )
 
 type storage interface {
-	Add([]stat.Stat,string) error
+	Add([]stat.Stat, string) error
+	Get(time.Time) ([]stat.Stat, error)
 }
 
 type Server struct {
 	Logger logger.Logger
 	Config *Config
-	Stor storage
+	Stor   storage
 }
 
-func New(logger logger.Logger) (*Server, error){
+func New(logger logger.Logger) (*Server, error) {
 	serv := &Server{}
 
 	serv.Logger = logger

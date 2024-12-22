@@ -8,29 +8,27 @@ import (
 	"github.com/Ord1nI/netStats/internal/storage/stat"
 )
 
-type Device interface{
-	CollectMetric() (error)
-	GetStats() (*stat.Stat)
+type Device interface {
+	CollectMetric() error
+	GetStats() *stat.Stat
 }
 
 type Collector struct {
-	logger logger.Logger
-	Schedule time.Duration
-	RateLimit int
-	Devices []Device
-	stop chan struct{}
+	logger       logger.Logger
+	Schedule     time.Duration
+	RateLimit    int
+	Devices      []Device
+	stop         chan struct{}
 	overAllStats chan []stat.Stat
 }
 
 func NewCollector(logger logger.Logger, schedule time.Duration, RateLimit int, devices ...Device) *Collector {
-	collector := &Collector{logger:logger,Schedule:schedule, Devices:devices, RateLimit:RateLimit}
-	return collector
+	return &Collector{logger: logger, Schedule: schedule, Devices: devices, RateLimit: RateLimit}
 }
 
 func (c *Collector) Add(d Device) {
 	c.Devices = append(c.Devices, d)
 }
-
 
 func (c *Collector) Start() error {
 
@@ -38,11 +36,20 @@ func (c *Collector) Start() error {
 
 	c.overAllStats = make(chan []stat.Stat)
 
-	ticker := time.NewTicker(c.Schedule)
-
-	overAllStats := make([]stat.Stat,len(c.Devices))
+	overAllStats := make([]stat.Stat, len(c.Devices))
 
 	go func() {
+
+		c.startWorkers(c.devPool(c.stop))
+
+		for v, i := range c.Devices {
+			overAllStats[v] = *i.GetStats()
+		}
+
+		c.overAllStats <- overAllStats
+
+		ticker := time.NewTicker(c.Schedule)
+
 		defer close(c.overAllStats)
 		for {
 
@@ -55,12 +62,11 @@ func (c *Collector) Start() error {
 
 				c.startWorkers(c.devPool(c.stop))
 
-
 				for v, i := range c.Devices {
 					overAllStats[v] = *i.GetStats()
 				}
 
-				c.overAllStats<-overAllStats
+				c.overAllStats <- overAllStats
 			}
 
 		}
@@ -69,7 +75,7 @@ func (c *Collector) Start() error {
 	return nil
 }
 
-func (c *Collector) GetStatsCh() <-chan []stat.Stat{
+func (c *Collector) GetStatsCh() <-chan []stat.Stat {
 	return c.overAllStats
 }
 
@@ -77,26 +83,26 @@ func (c *Collector) Stop() {
 	close(c.stop)
 }
 
-func (c *Collector) devPool(stop <-chan struct{}) <-chan Device{
+func (c *Collector) devPool(stop <-chan struct{}) <-chan Device {
 	devPool := make(chan Device)
 
 	go func() {
 
 		defer close(devPool)
 
-			for _, i := range c.Devices {
+		for _, i := range c.Devices {
 
-				select {
-				case <-stop:
+			select {
+			case <-stop:
 
-					c.logger.Infoln("devPool stop")
-					return
+				c.logger.Infoln("devPool stop")
+				return
 
-				default:
+			default:
 
-					devPool <- i
-				}
+				devPool <- i
 			}
+		}
 	}()
 	return devPool
 }

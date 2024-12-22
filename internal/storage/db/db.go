@@ -25,6 +25,41 @@ func NewDb(dsn string) (*DB, error) {
 	return &DB{db}, nil
 }
 
+func (d *DB) Get(t time.Time) ([]stat.Stat, error) {
+	// res := []stat.Stat{}
+
+	row, err := d.DB.Query(`SELECT data
+			FROM snapshot_data
+			WHERE snapshot_id = (
+				SELECT id
+				FROM snapshots
+				WHERE unixepoch(created_at) <= $1
+                LIMIT 1);`,
+		t.Unix())
+
+	if err != nil {
+		return nil, err
+	}
+
+	result := []stat.Stat{}
+
+	var st stat.Stat
+	var res string
+	for row.Next() {
+
+		row.Scan(&res)
+
+		err = json.Unmarshal([]byte(res), &st)
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(result, st)
+	}
+
+	return result, nil
+}
+
 func (d *DB) Add(stats []stat.Stat, name string) error {
 	_, err := d.DB.Exec("INSERT INTO snapshots (name) VALUES ('Snapshot 1');")
 	if err != nil {

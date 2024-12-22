@@ -9,51 +9,50 @@ import (
 	"github.com/Ord1nI/netStats/internal/logger"
 	"github.com/Ord1nI/netStats/internal/storage/stat"
 )
+
 type API interface {
 	AddStats(stats []stat.Stat) error
 	GetStats(time time.Time) ([]stat.Stat, error)
 }
 
 type Client struct {
-	api API
-	config *config
-	logger logger.Logger
+	api       API
+	Config    *config
+	logger    logger.Logger
 	collector *collector.Collector
-
 
 	stopCh chan struct{}
 }
 
 func NewClient(l logger.Logger) (*Client, error) {
-	client := &Client{logger:l}
-
+	client := &Client{logger: l}
 
 	err := client.getConf()
 	if err != nil {
 		return nil, err
 	}
 
-	collector := collector.NewCollector(l, time.Duration(client.config.Schedule), client.config.RateLimit)
+	collector := collector.NewCollector(l, time.Duration(client.Config.Schedule), client.Config.RateLimit)
 
-	for _, v := range client.config.DevParams {
+	for _, v := range client.Config.DevParams {
 		switch v.DeviceName {
 		case "MicroTik":
 
-			dev, err := chr.New(l, v.Host, v.Port, v.Username,v.Password)
+			dev, err := chr.New(l, v.Host, v.Port, v.Username, v.Password)
 			if err != nil {
-				l.Errorln("Probably wrong data for device ", v.DeviceName," host: ", v.Host, " ",err)
+				l.Errorln("Probably wrong data for device ", v.DeviceName, " host: ", v.Host, " ", err)
 			}
 			collector.Devices = append(collector.Devices, dev)
 
 		default:
 
-			l.Errorln("Unsupported device ",v.DeviceName, " host: ", v.Host)
+			l.Errorln("Unsupported device ", v.DeviceName, " host: ", v.Host)
 		}
 	}
 
 	client.collector = collector
 
-	api, err := clientapi.New(client.config.Address)
+	api, err := clientapi.New(client.Config.Address)
 
 	if err != nil {
 		return nil, err
@@ -88,7 +87,7 @@ func (c *Client) Start() error {
 				c.logger.Infoln("Client stop")
 				return
 
-			case stats := <- statsCh:
+			case stats := <-statsCh:
 				err := c.api.AddStats(stats)
 				if err != nil {
 					c.logger.Errorln("Error sendig stats to server ", err)

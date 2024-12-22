@@ -3,8 +3,8 @@ package devices
 import (
 	"time"
 
-	"github.com/Ord1nI/netStats/internal/storage/stat"
 	"github.com/Ord1nI/netStats/internal/logger"
+	"github.com/Ord1nI/netStats/internal/storage/stat"
 
 	"github.com/scrapli/scrapligo/driver/generic"
 	"github.com/scrapli/scrapligo/response"
@@ -12,28 +12,33 @@ import (
 	"github.com/sirikothe/gotextfsm"
 )
 
-
 type command struct {
-	Command string
-	Fsm *gotextfsm.TextFSM
+	Command   string
+	Fsm       *gotextfsm.TextFSM
 	ParseFunc func(parser *gotextfsm.ParserOutput, stats *stat.Stat) error
 }
 
 type Command struct {
-	Command string
-	Fsm string
+	Command   string
+	Fsm       string
 	ParseFunc func(parser *gotextfsm.ParserOutput, stats *stat.Stat) error
+}
+
+type Driver interface {
+	SendCommand(string, ...util.Option) (*response.Response, error)
+	Open() error
+	Close() error
 }
 
 type Dev struct {
 	Logger logger.Logger
 
-	Driver *generic.Driver
+	Driver Driver
 
-	Host string
+	Host    string
 	Options []util.Option
 
-	Stats *stat.Stat
+	Stats    *stat.Stat
 	Commands []command
 }
 
@@ -48,7 +53,7 @@ func NewDev(logger logger.Logger, host string, cmds []Command, opts ...util.Opti
 	d.Host = host
 	d.Options = opts
 
-	d.Commands = make([]command,len(cmds))
+	d.Commands = make([]command, len(cmds))
 
 	for i, v := range cmds {
 
@@ -87,7 +92,7 @@ func (d *Dev) Close() error {
 	return d.Driver.Close()
 }
 
-func (d *Dev) GetStats() (*stat.Stat) {
+func (d *Dev) GetStats() *stat.Stat {
 	return d.Stats
 }
 
@@ -97,12 +102,11 @@ func (d *Dev) BackOff(command string) (*response.Response, error) {
 
 	for i := 0; i < 3; i++ {
 		out, err = d.Driver.SendCommand(command)
-		if  err == nil {
+		if err == nil {
 			return out, nil
 		}
-		time.Sleep(3)
+		time.Sleep(3 * time.Second)
 	}
 
 	return nil, err
 }
-

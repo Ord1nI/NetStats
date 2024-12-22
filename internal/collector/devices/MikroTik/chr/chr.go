@@ -1,7 +1,6 @@
 package chr
 
 import (
-	"context"
 	"log"
 	"regexp"
 	"strconv"
@@ -22,6 +21,7 @@ type chr struct {
 const versionCmd = "system/resource/print without-paging"
 const interfaceAboutCmd = "interface/print detail proplist=name,default-name,type,mtu,mac,disabled,running without-paging"
 const counterCmd = "interface/print stats-detail proplist=rx-byte,tx-byte,rx-packet,tx-packet,rx-drop,tx-drop,rx-error,tx-error without-paging"
+const hostNameCmd = "system/identity/print without-paging"
 
 func New(logger logger.Logger, host string, port int, username string, password string) (*chr, error) {
 	logger.Infoln("Creating Mikrotik CHR device")
@@ -33,14 +33,15 @@ func New(logger logger.Logger, host string, port int, username string, password 
 		host,
 
 		[]devices.Command{
+			devices.Command{hostNameCmd, hostnamTemplate, chr.parseHostname},
 			devices.Command{versionCmd, versionTemplate, chr.parseVersion},
 			devices.Command{interfaceAboutCmd, interfaceAboutTemplate, chr.parseInterface},
-			devices.Command{counterCmd, InterfaceCounterTemplate, chr.parseCounter},
+			devices.Command{counterCmd, interfaceCounterTemplate, chr.parseCounter},
 		},
 
 		options.WithTransportType("standard"),
 		options.WithDefaultLogger(),
-		options.WithReadDelay(time.Second * 3),
+		options.WithReadDelay(time.Second*3),
 		options.WithReturnChar("\r"),
 		options.WithPromptPattern(regexp.MustCompile(`\[\S*\]\s*>\s`)),
 		options.WithPasswordPattern(regexp.MustCompile(`.*Password:\s?$`)),
@@ -60,6 +61,10 @@ func New(logger logger.Logger, host string, port int, username string, password 
 	return chr, nil
 }
 
+func (c *chr) parseHostname(parser *gotextfsm.ParserOutput, stats *stat.Stat) error {
+	stats.DevInfo.Hostname = parser.Dict[0]["Hostname"].(string)
+	return nil
+}
 
 func (c *chr) parseVersion(parser *gotextfsm.ParserOutput, stats *stat.Stat) error {
 	uptime, err := time.ParseDuration(parser.Dict[0]["Uptime"].(string))
@@ -73,22 +78,20 @@ func (c *chr) parseVersion(parser *gotextfsm.ParserOutput, stats *stat.Stat) err
 		c.Logger.Errorln("Error when parsing freememory")
 		freememory = 0
 	}
-	freememory *= 1024*1024*8
+	freememory *= 1024 * 1024
 
 	totalmemory, err := strconv.ParseFloat(parser.Dict[0]["TotalMemory"].(string), 64)
 	if err != nil {
 		c.Logger.Errorln("Error when parsing totalmemory")
 		totalmemory = 0
 	}
-	totalmemory *= 1024*1024*8
-
+	totalmemory *= 1024 * 1024
 
 	stats.DevInfo.Version = parser.Dict[0]["Version"].(string)
 	stats.DevInfo.Processor = parser.Dict[0]["Cpu"].(string)
 	stats.DevInfo.DevType = "router"
-	stats.DevInfo.Hostname = parser.Dict[0]["BoardName"].(string)
 	stats.DevInfo.MemoryTotalBytes = int64(totalmemory)
-	stats.DevInfo.MemoryUsedBytes =  int64(totalmemory-freememory)
+	stats.DevInfo.MemoryUsedBytes = int64(totalmemory - freememory)
 	stats.DevInfo.Uptime = int64(uptime.Seconds())
 
 	return nil
@@ -105,7 +108,7 @@ func (c *chr) parseInterface(parser *gotextfsm.ParserOutput, stata *stat.Stat) e
 			mtu = -1
 		}
 
-		if (v["Comment"] != nil) {
+		if v["Comment"] != nil {
 			stata.InterfacesInfo[i].Description = v["Comment"].(string)
 		}
 
@@ -129,35 +132,35 @@ func (c *chr) parseCounter(parser *gotextfsm.ParserOutput, stats *stat.Stat) err
 
 	for i, v := range parser.Dict {
 		InBytes, err := strconv.ParseInt(r.Replace(v["InBytes"].(string)), 10, 64)
-		if (err != nil) {
+		if err != nil {
 			c.Logger.Errorln("Error when parsing InBytes")
 		}
 		OutBytes, err := strconv.ParseInt(r.Replace(v["OutBytes"].(string)), 10, 64)
-		if (err != nil) {
+		if err != nil {
 			c.Logger.Errorln("Error when parsing outBytes")
 		}
 		InPkts, err := strconv.ParseInt(r.Replace(v["InPkts"].(string)), 10, 64)
-		if (err != nil) {
+		if err != nil {
 			c.Logger.Errorln("Error when parsing InPkts")
 		}
 		OutPkts, err := strconv.ParseInt(r.Replace(v["OutPkts"].(string)), 10, 64)
-		if (err != nil) {
+		if err != nil {
 			c.Logger.Errorln("Error when parsing OutPkts")
 		}
 		InDrops, err := strconv.ParseInt(r.Replace(v["InDrops"].(string)), 10, 64)
-		if (err != nil) {
+		if err != nil {
 			c.Logger.Errorln("Error when parsing InDrpos")
 		}
 		OutDrops, err := strconv.ParseInt(r.Replace(v["OutDrops"].(string)), 10, 64)
-		if (err != nil) {
+		if err != nil {
 			c.Logger.Errorln("Error when parsing OutDrops")
 		}
 		ReadError, err := strconv.ParseInt(r.Replace(v["ReadError"].(string)), 10, 64)
-		if (err != nil) {
+		if err != nil {
 			c.Logger.Errorln("Error when parsing ReadError")
 		}
 		OutError, err := strconv.ParseInt(r.Replace(v["OutError"].(string)), 10, 64)
-		if (err != nil) {
+		if err != nil {
 			c.Logger.Errorln("Error when parsing OutError")
 		}
 
@@ -173,7 +176,6 @@ func (c *chr) parseCounter(parser *gotextfsm.ParserOutput, stats *stat.Stat) err
 	return nil
 }
 
-
 func (c *chr) CollectMetric() error {
 	c.Logger.Infoln("Start Metric collecting for MikroTik CHR host: ", c.Host)
 	err := c.Open()
@@ -187,10 +189,7 @@ func (c *chr) CollectMetric() error {
 	stats := &stat.Stat{}
 	parser := gotextfsm.ParserOutput{}
 
-	tc, stop := context.WithTimeout(context.Background(), time.Second*60)
-	defer stop()
-
-	_, err = c.Driver.Channel.ReadUntilPrompt(tc)
+	_, err = c.Driver.SendCommand("123")
 
 	if err != nil {
 		log.Fatal("196")
@@ -203,13 +202,12 @@ func (c *chr) CollectMetric() error {
 			log.Fatal("203")
 		}
 
-
 		err = parser.ParseTextString(out.Result, *v.Fsm, true)
 		if err != nil {
 			log.Fatal("209")
 		}
 
-		err = v.ParseFunc(&parser,stats)
+		err = v.ParseFunc(&parser, stats)
 		if err != nil {
 			log.Fatal("214")
 		}
@@ -218,6 +216,7 @@ func (c *chr) CollectMetric() error {
 	}
 
 	c.Stats = stats
-	c.Logger.Infoln("End Metric collecting for MikroTik CHR host: ", c.Driver.Transport.Args.Host)
+	c.Logger.Infoln("End Metric collecting for MikroTik CHR host: ", c.Host)
+
 	return nil
 }

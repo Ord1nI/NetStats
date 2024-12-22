@@ -1,5 +1,11 @@
 package chr
 
+const hostnamTemplate = `Value Hostname (.*)
+
+Start
+ ^\s*name:\s${Hostname}
+`
+
 const versionTemplate = `Value Uptime (.*)
 Value Version (.*)
 Value BuildTime (\d+-\d+-\d+ \d+:\d+:\d+)
@@ -40,23 +46,22 @@ Value Type (\S*)
 Value NameOriginal (\S*)
 Value MTU (\d+)
 Value MAC (\w\w:\w\w:\w\w:\w\w:\w\w:\w\w)
-Value Disabled (.*)
-Value Running (.*)
+Value Disabled (\w+)
+Value Running (\w+)
 Value Comment (\S*)
 
 Start
  ^.*;;;\s${Comment} -> Continue
- ^\s*\d?\s+\w?\s+name=${Name} -> Continue
- ^.*default-name=${NameOriginal} -> Continue
- ^.*type=${Type} -> Continue
+ ^\s*\d?\s+\w?\s+name="${Name}" -> Continue
+ ^.*default-name="${NameOriginal}" -> Continue
+ ^.*type="${Type}" -> Continue
  ^.*mtu=${MTU} -> Continue
  ^.*mac-address=${MAC} -> Continue
  ^.*disabled=${Disabled} -> Continue
  ^.*running=${Running} -> Next.Record
 `
 
-
-const InterfaceCounterTemplate = `Value InBytes (\d*\s?\d*\s?\d*\s?\d*\s?\d*\s?\d*\s?\d+)
+const interfaceCounterTemplate = `Value InBytes (\d*\s?\d*\s?\d*\s?\d*\s?\d*\s?\d*\s?\d+)
 Value OutBytes (\d*\s?\d*\s?\d*\s?\d*\s?\d*\s?\d*\s?\d+)
 Value InPkts (\d*\s?\d*\s?\d*\s?\d*\s?\d*\s?\d*\s?\d+)
 Value OutPkts (\d*\s?\d*\s?\d*\s?\d*\s?\d*\s?\d*\s?\d+)

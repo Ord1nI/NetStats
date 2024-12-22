@@ -5,7 +5,7 @@ import (
 	"github.com/Ord1nI/netStats/internal/storage/stat"
 )
 
-func ToGrpsStats(stats *stat.Stat) *pb.Stat {
+func ToGrpcStats(stats *stat.Stat) *pb.Stat {
 	gStat := &pb.Stat{}
 	gStat.L2Interface = make([]*pb.L2Interface, len(stats.InterfacesInfo))
 
@@ -18,7 +18,6 @@ func ToGrpsStats(stats *stat.Stat) *pb.Stat {
 	gStat.DevInfo.DevType = stats.DevInfo.DevType
 	gStat.DevInfo.MemoryTotalBytes = stats.DevInfo.MemoryTotalBytes
 	gStat.DevInfo.MemoryUsedBytes = stats.DevInfo.MemoryUsedBytes
-
 
 	for i, v := range stats.InterfacesInfo {
 
@@ -49,7 +48,7 @@ func ToGrpsStats(stats *stat.Stat) *pb.Stat {
 	return gStat
 }
 
-func FromGrpsStats(stats *pb.Stat) *stat.Stat {
+func FromGrpcStats(stats *pb.Stat) *stat.Stat {
 	gStat := &stat.Stat{}
 	gStat.InterfacesInfo = make([]stat.L2Interface, len(stats.L2Interface))
 
