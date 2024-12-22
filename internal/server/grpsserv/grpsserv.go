@@ -9,6 +9,7 @@ import (
 	"github.com/Ord1nI/netStats/internal/logger"
 	pb "github.com/Ord1nI/netStats/internal/proto"
 	"github.com/Ord1nI/netStats/internal/server"
+	"github.com/Ord1nI/netStats/internal/server/grpsserv/interceptors"
 	"github.com/Ord1nI/netStats/internal/storage/stat"
 	"google.golang.org/grpc"
 )
@@ -26,8 +27,10 @@ func New(l logger.Logger) (*GrpcServ, error) {
 		return nil, err
 	}
 
-	return &GrpcServ{Server: mServ, Gserv: grpc.NewServer()}, nil
+	gServ := &GrpcServ{Server: mServ, Gserv: grpc.NewServer(grpc.ChainUnaryInterceptor(interceptors.LoggerInterceptor(l)))}
 
+
+	return gServ, nil
 }
 
 func (s *GrpcServ) Run() error {
@@ -40,11 +43,20 @@ func (s *GrpcServ) Run() error {
 
 	pb.RegisterUsersServer(s.Gserv, s)
 
-	if err := s.Gserv.Serve(listen); err != nil {
-		return err
-	}
+	go func() {
+		err := s.Gserv.Serve(listen)
+		if err != nil {
+			s.Logger.Fatal("Error staring server")
+		}
+	}()
 
 	return nil
+}
+
+func (s *GrpcServ) Stop() {
+	s.Logger.Infoln("Stopping server")
+	s.Gserv.Stop()
+	s.Logger.Infoln("Server stopped")
 }
 
 func (s *GrpcServ) AddStats(ctx context.Context, gStats *pb.Stats) (*pb.AddStatsRes, error) {

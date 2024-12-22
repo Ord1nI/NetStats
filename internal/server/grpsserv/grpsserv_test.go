@@ -35,7 +35,7 @@ func (s *storageMock) Get(time.Time) ([]stat.Stat, error) {
 	}, nil
 }
 
-func grpcServTest(t *testing.T) {
+func TestgrpcServ(t *testing.T) {
 	lis := bufconn.Listen(1024 * 1024)
 	t.Cleanup(func() {
 		lis.Close()
@@ -54,7 +54,7 @@ func grpcServTest(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	api, err := clientapi.New("")
+	api, _ := clientapi.New("")
 	reqData := []stat.Stat{
 		stat.Stat{
 			DevInfo: stat.DeviceInfo{

@@ -87,6 +87,11 @@ func (d *DB) Add(stats []stat.Stat, name string) error {
 
 		js, err := json.Marshal(v)
 
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+
 		_, err = tx.Exec("INSERT INTO snapshot_data (snapshot_id, data) VALUES ($1, $2);", id, js)
 
 		if err != nil {

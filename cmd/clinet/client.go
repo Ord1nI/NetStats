@@ -2,14 +2,16 @@ package main
 
 import (
 	"fmt"
-	"time"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/Ord1nI/netStats/internal/client"
 	"github.com/Ord1nI/netStats/internal/logger"
 )
 
 func main() {
-	l,err := logger.New()
+	l, err := logger.New()
 
 	if err != nil {
 		fmt.Println(err)
@@ -22,7 +24,12 @@ func main() {
 	}
 
 	c.Start()
-	defer c.Stop()
 
-	time.Sleep(time.Hour * 1)
+	sigs := make(chan os.Signal, 1)
+    signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+
+	<-sigs
+	fmt.Println("End program")
+	c.Stop()
+
 }
